@@ -38,16 +38,16 @@
 
 <div class="container">
     <div id="login-section">
-        <h1>テスト 第１課 (ことば)<br><small>Test Bab 1</small></h1>
+        <h1>テスト 第１課<br><small>Test Bab 1</small></h1>
         <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
         <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
-        <button onclick="startExam()">Mulai Ujian (25 Menit)</button>
+        <button onclick="startExam()">Mulai Ujian (15 Menit)</button>
     </div>
 
     <div id="exam-section">
         <div class="header-info">
             <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
-            <div id="timer">25:00</div>
+            <div id="timer">15:00</div>
         </div>
 
         <form id="exam-form">
@@ -62,7 +62,7 @@
             
             <div id="loading-section" style="text-align: center;">
                 <div class="loader"></div>
-                <p><strong>Menyimpan dan memeriksa ujian...</strong></p>
+                <p><strong>Memproses nilai...</strong></p>
             </div>
 
             <button type="button" id="btn-submit" onclick="submitExam()">Kumpulkan Ujian</button>
@@ -77,26 +77,26 @@
 </div>
 
 <script>
-    // MASUKKAN API KEY GEMINI ANDA DI SINI
-    const GEMINI_API_KEY = "AQ.Ab8RN6KBKRxlYk9WHtvs9Rr4RuPwz0zbO7qx8HZEYadHGJ3RZg";
-    // MASUKKAN URL GOOGLE APPS SCRIPT (WEB APP URL) YANG BARU (Yang hanya mencatat Sheets)
+    // URL Web App GAS (Hanya untuk mencatat ke Sheets, tanpa AI)
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
 
-    let timeRemaining = 15 * 60; // Durasi diperbarui jadi 15 menit
+    let timeRemaining = 15 * 60; 
     let timerInterval;
 
-    // KAMUS KUNCI MUTLAK
     const absoluteKeys = {
-        "p1_0": ["beliau", "orang itu", "orang itu (sopan)"],
+        // Bagian 1
+        "p1_0": ["beliau", "orang itu"],
         "p1_1": ["guru", "pengajar", "dosen"],
-        "p1_2": ["mahasiswa", "pelajar", "murid"],
+        "p1_2": ["pelajar", "mahasiswa", "murid"],
         "p1_3": ["pegawai bank", "karyawan bank", "staf bank"],
-        "p1_4": ["peneliti", "periset"],
-        "p1_5": ["universitas", "kampus", "perguruan tinggi"],
+        "p1_4": ["peneliti", "periset", "ilmuwan"],
+        "p1_5": ["universitas", "perguruan tinggi", "kampus"],
         "p1_6": ["umur berapa", "usia berapa", "berapa umurnya"],
         "p1_7": ["orang jepang", "warga negara jepang"],
-        "p1_8": ["siapa", "siapa (sopan)"],
-        "p1_9": ["bahasa inggris", "inggris"],
+        "p1_8": ["siapa"],
+        "p1_9": ["bahasa inggris"],
+
+        // Bagian 2
         "p2_0": ["あなた"],
         "p2_1": ["きょうし", "せんせい"],
         "p2_2": ["かいしゃいん", "しゃいん"],
@@ -107,40 +107,83 @@
         "p2_7": ["だれ", "どなた"],
         "p2_8": ["どうぞ"],
         "p2_9": ["ロシア"],
-        "p4_0": ["わたしはがくせいです", "わたしはがくせいです。"],
-        "p4_1": ["カリナさんはインドネシアじんです", "カリナさんはインドネシアじんです。"],
-        "p4_2": ["やまださんはぎんこういんです", "やまださんはぎんこういんです。"],
-        "p4_3": ["わたしは28さいです", "わたしは28さいです。", "わたしはにじゅうはっさいです"],
-        "p4_4": ["ミラーさんはimcのしゃいんです", "ミラーさんはimcのしゃいんです。", "みらーさんはimcのしゃいんです"]
+
+        // Bagian 3
+        "p3_0": [
+            "はい、わたしもがくせいです。", "はい、私も学生です。", "はい、そうです。",
+            "いいえ、わたしはがくせいじゃありません。", "いいえ、私は学生じゃありません。",
+            "いいえ、わたしはがくせいではありません。", "いいえ、私は学生ではありません。",
+            "いいえ、がくせいじゃありません。", "いいえ、学生じゃありません。",
+            "いいえ、がくせいではありません。", "いいえ、学生ではありません。",
+            "いいえ、ちがいます。", "いいえ、違います。"
+        ],
+        "p3_1": [
+            "はい、わたしはにほんじんです。", "はい、私は日本人です。",
+            "はい、にほんじんです。", "はい、日本人です。", "はい、そうです。",
+            "いいえ、わたしはにほんじんじゃありません。", "いいえ、私は日本人じゃありません。",
+            "いいえ、わたしはにほんじんではありません。", "いいえ、私は日本人ではありません。",
+            "いいえ、にほんじんじゃありません。", "いいえ、日本人じゃありません。",
+            "いいえ、にほんじんではありません。", "いいえ、日本人ではありません。",
+            "いいえ、インドネシアじんです。", "いいえ、インドネシア人です。",
+            "いいえ、わたしはインドネシアじんです。", "いいえ、私はインドネシア人です。",
+            "いいえ、ちがいます。", "いいえ、違います。"
+        ],
+        "p3_2": [
+            "はい、パラヒヤンガンだいがくのがくせいです。", "はい、パラヒヤンガン大学の学生です。",
+            "はい、わたしはパラヒヤンガンだいがくのがくせいです。", "はい、私はパラヒヤンガン大学の学生です。",
+            "はい、そうです。",
+            "いいえ、パラヒヤンガンだいがくのがくせいじゃありません。", "いいえ、パラヒヤンガン大学の学生じゃありません。",
+            "いいえ、パラヒヤンガンだいがくのがくせいではありません。", "いいえ、パラヒヤンガン大学の学生ではありません。",
+            "いいえ、わたしはパラヒヤンガンだいがくのがくせいじゃありません。", "いいえ、私はパラヒヤンガン大学の学生じゃありません。",
+            "いいえ、わたしはパラヒヤンガンだいがくのがくせいではありません。", "いいえ、私はパラヒヤンガン大学の学生ではありません。",
+            "いいえ、ちがいます。", "いいえ、違います。"
+        ],
+        // p3_3 divalidasi menggunakan fungsi Regex khusus (checkAge) karena sangat dinamis
+        "p3_4": [
+            "はい、カリナさんはインドネシアじんです。", "はい、カリナさんはインドネシア人です。",
+            "はい、インドネシアじんです。", "はい、インドネシア人です。", "はい、そうです。",
+            "いいえ、かりなさんはインドネシアじんではありません。", "いいえ、カリナさんはインドネシア人ではありません。",
+            "いいえ、カリナさんはインドネシアじんじゃありません。", "いいえ、カリナさんはインドネシア人じゃありません。",
+            "いいえ、インドネシアじんじゃありません。", "いいえ、インドネシア人じゃありません。",
+            "いいえ、インドネシアじんではありません。", "いいえ、インドネシア人ではありません。",
+            "いいえ、ちがいます。", "いいえ、違います。"
+        ],
+
+        // Bagian 4
+        "p4_0": ["わたしはがくせいです。", "私は学生です。"],
+        "p4_1": ["カリナさんはインドネシアじんです。", "カリナさんはインドネシア人です。"],
+        "p4_2": ["やまださんはぎんこういんです。", "山田さんは銀行員です。"],
+        "p4_3": ["わたしは28さいです。", "私は28歳です。", "わたしはにじゅうはっさいです。", "私は二十八歳です。"],
+        "p4_4": ["ミラーさんはimcのしゃいんです。", "ミラーさんはimcの社員です。"]
     };
 
     const part1 = [
-        { id: "p1_0", q: "1. あのかた", ref: "beliau", pts: 1 }, { id: "p1_1", q: "2. せんせい", ref: "guru", pts: 1 },
-        { id: "p1_2", q: "3. がくせい", ref: "pelajar", pts: 1 }, { id: "p1_3", q: "4. ぎんこういん", ref: "pegawai bank", pts: 1 },
-        { id: "p1_4", q: "5. けんきゅうしゃ", ref: "peneliti", pts: 1 }, { id: "p1_5", q: "6. だいがく", ref: "universitas", pts: 1 },
-        { id: "p1_6", q: "7. おいくつ", ref: "umur berapa", pts: 1 }, { id: "p1_7", q: "8. にほんじん", ref: "orang jepang", pts: 1 },
-        { id: "p1_8", q: "9. どなた", ref: "siapa", pts: 1 }, { id: "p1_9", q: "10. えいご", ref: "bahasa inggris", pts: 1 }
+        { id: "p1_0", q: "1. あのかた", pts: 1 }, { id: "p1_1", q: "2. せんせい", pts: 1 },
+        { id: "p1_2", q: "3. がくせい", pts: 1 }, { id: "p1_3", q: "4. ぎんこういん", pts: 1 },
+        { id: "p1_4", q: "5. けんきゅうしゃ", pts: 1 }, { id: "p1_5", q: "6. だいがく", pts: 1 },
+        { id: "p1_6", q: "7. おいくつ", pts: 1 }, { id: "p1_7", q: "8. にほんじん", pts: 1 },
+        { id: "p1_8", q: "9. どなた", pts: 1 }, { id: "p1_9", q: "10. えいご", pts: 1 }
     ];
     const part2 = [
-        { id: "p2_0", q: "1. Kamu / Anda", ref: "あなた", pts: 1 }, { id: "p2_1", q: "2. Pengajar / Guru", ref: "きょうし", pts: 1 },
-        { id: "p2_2", q: "3. Karyawan", ref: "かいしゃいん", pts: 1 }, { id: "p2_3", q: "4. Dokter", ref: "いしゃ", pts: 1 },
-        { id: "p2_4", q: "5. Rumah Sakit", ref: "びょういん", pts: 1 }, { id: "p2_5", q: "6. Korea Selatan", ref: "かんこく", pts: 1 },
-        { id: "p2_6", q: "7. Bahasa Jerman", ref: "ドイツご", pts: 1 }, { id: "p2_7", q: "8. Siapa?", ref: "だれ", pts: 1 },
-        { id: "p2_8", q: "9. Silahkan", ref: "どうぞ", pts: 1 }, { id: "p2_9", q: "10. Rusia", ref: "ロシア", pts: 1 }
+        { id: "p2_0", q: "1. Kamu / Anda", pts: 1 }, { id: "p2_1", q: "2. Pengajar / Guru", pts: 1 },
+        { id: "p2_2", q: "3. Karyawan", pts: 1 }, { id: "p2_3", q: "4. Dokter", pts: 1 },
+        { id: "p2_4", q: "5. Rumah Sakit", pts: 1 }, { id: "p2_5", q: "6. Korea Selatan", pts: 1 },
+        { id: "p2_6", q: "7. Bahasa Jerman", pts: 1 }, { id: "p2_7", q: "8. Siapa?", pts: 1 },
+        { id: "p2_8", q: "9. Silahkan", pts: 1 }, { id: "p2_9", q: "10. Rusia", pts: 1 }
     ];
     const part3 = [
-        { id: "p3_0", q: "1. カリナさんはがくせいです。あなたもがくせいですか。", ref: "はい、わたしもがくせいです", pts: 2 },
-        { id: "p3_1", q: "2. あなたはにほんじんですか。", ref: "いいえ、わたしはにほんじんじゃありません", pts: 2 },
-        { id: "p3_2", q: "3. あなたはパラヒヤンガン大学のがくせいですか。", ref: "はい/いいえ, ...", pts: 2 },
-        { id: "p3_3", q: "4. あなたはなんさいですか。", ref: "Menyebutkan umur", pts: 2 },
-        { id: "p3_4", q: "5. カリナさんはインドネシアじんですか。", ref: "はい、インドネシアじんです", pts: 2 }
+        { id: "p3_0", q: "1. カリナさんはがくせいです。あなたもがくせいですか。", pts: 2 },
+        { id: "p3_1", q: "2. あなたはにほんじんですか。", pts: 2 },
+        { id: "p3_2", q: "3. あなたはパラヒヤンガン大学のがくせいですか。", pts: 2 },
+        { id: "p3_3", q: "4. あなたはなんさいですか。", pts: 2 },
+        { id: "p3_4", q: "5. カリナさんはインドネシアじんですか。", pts: 2 }
     ];
     const part4 = [
-        { id: "p4_0", q: "1. Saya adalah pelajar.", ref: "わたしはがくせいです", pts: 2 },
-        { id: "p4_1", q: "2. Karina adalah orang Indonesia.", ref: "カリナさんはインドネシアじんです", pts: 2 },
-        { id: "p4_2", q: "3. Yamada adalah pegawai bank.", ref: "やまださんはぎんこういんです", pts: 2 },
-        { id: "p4_3", q: "4. Saya berumur 28 tahun.", ref: "わたしはにじゅうはっさいです", pts: 2 },
-        { id: "p4_4", q: "5. Mira- adalah pegawai IMC.", ref: "ミラーさんはIMCのしゃいんです", pts: 2 }
+        { id: "p4_0", q: "1. Saya adalah pelajar.", pts: 2 },
+        { id: "p4_1", q: "2. Karina adalah orang Indonesia.", pts: 2 },
+        { id: "p4_2", q: "3. Yamada adalah pegawai bank.", pts: 2 },
+        { id: "p4_3", q: "4. Saya berumur 28 tahun.", pts: 2 },
+        { id: "p4_4", q: "5. Mira- adalah pegawai IMC.", pts: 2 }
     ];
 
     const allQuestions = [...part1, ...part2, ...part3, ...part4];
@@ -179,7 +222,17 @@
         document.getElementById('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
-    async function submitExam(isAuto = false) {
+    // Fungsi khusus mendeteksi jawaban umur (Angka, Hiragana, Kanji) dengan dinamis
+    function checkAge(ans) {
+        let jwb = ans.replace(/\s+/g, '');
+        // Mengizinkan digit/huruf apapun asal diakhiri dengan satuan umur + titik
+        if (/^(わたしは|私は)?.+(さい|歳)です。$/.test(jwb)) return true;
+        
+        let special = ["わたしははたちです。", "私は二十歳です。", "私ははたちです。", "はたちです。", "二十歳です。"];
+        return special.includes(jwb);
+    }
+
+    function submitExam(isAuto = false) {
         if (!isAuto && !confirm("Kumpulkan ujian sekarang?")) return;
         clearInterval(timerInterval);
         
@@ -187,91 +240,60 @@
         document.getElementById('loading-section').style.display = 'block';
         
         let hasilInstan = [];
-        let soalUntukAI = [];
         let poinLokal = 0;
 
-        // 1. Koreksi Lokal (Bagian 1, 2, 4)
+        // KOREKSI LOKAL 100% INSTAN
         allQuestions.forEach(item => {
             const el = document.getElementById(item.id);
             el.readOnly = true; 
             
             let jwbSiswa = el.value.trim();
-            let jwbCek = item.id.startsWith("p1_") ? jwbSiswa.toLowerCase() : jwbSiswa.replace(/\s+/g, '').toLowerCase();
+            let isBenar = false;
 
-            if (item.id.startsWith("p3_")) {
-                soalUntukAI.push({
-                    id: item.id, soal: item.q, 
-                    jawaban_siswa: jwbSiswa || "(Kosong)", poin_maksimal: item.pts
-                });
+            if (item.id === "p3_3") {
+                isBenar = checkAge(jwbSiswa);
             } else {
-                if (absoluteKeys[item.id] && absoluteKeys[item.id].includes(jwbCek)) {
-                    poinLokal += item.pts; 
-                    hasilInstan.push({ id: item.id, status: "benar", komentar: "Tepat sekali!" });
-                } else {
-                    let kunciBenar = absoluteKeys[item.id] ? absoluteKeys[item.id][0] : item.ref;
-                    hasilInstan.push({ id: item.id, status: "salah", komentar: `Jawaban tepat: ${kunciBenar}` });
+                // Hapus seluruh spasi dan ubah ke huruf kecil untuk proses pencocokan yang fleksibel
+                let jwbCek = jwbSiswa.replace(/\s+/g, '').toLowerCase();
+                let validKeys = absoluteKeys[item.id].map(k => k.replace(/\s+/g, '').toLowerCase());
+                
+                if (validKeys.includes(jwbCek)) {
+                    isBenar = true;
                 }
+            }
+
+            if (isBenar) {
+                poinLokal += item.pts; 
+                hasilInstan.push({ id: item.id, status: "benar", komentar: "Tepat sekali!" });
+            } else {
+                // Jika salah, tampilkan kunci jawaban pertama dari array sebagai referensi
+                let kunciBenar = "";
+                if (item.id === "p3_3") {
+                    kunciBenar = "わたしは[angka]さいです。";
+                } else if (absoluteKeys[item.id]) {
+                    kunciBenar = absoluteKeys[item.id][0];
+                }
+                hasilInstan.push({ id: item.id, status: "salah", komentar: `Jawaban tepat: ${kunciBenar}` });
             }
         });
 
-        let totalSkor = poinLokal;
-        let aiEvaluations = [];
-        let aiText = "Koreksi HTML Selesai.";
+        const finalScore = Math.round((poinLokal / 40) * 100);
 
-        try {
-            // 2. Koreksi AI Langsung dari Browser (Bagian 3) menggunakan gemini-3.8-flash
-            if (soalUntukAI.length > 0) {
-                const aiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
-                const prompt = "Evaluasi jawaban ujian bahasa Jepang (Bagian 3: Pemahaman Bebas). Beri nilai 0, 1, atau 2 poin maksimal per soal.\n\n" +
-                               "Data Jawaban Siswa:\n" + JSON.stringify(soalUntukAI) + "\n\n" +
-                               "Keluarkan HANYA format JSON murni berisi total 'tambahan_poin' (angka) dan 'evaluasi' (array) berisi id, status (benar/sebagian/salah), dan komentar singkat.";
+        // Tampilkan Rapor Seketika (0 Detik)
+        document.getElementById('loading-section').style.display = 'none';
+        tampilkanRapor(finalScore, hasilInstan);
 
-                const response = await fetch(aiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
-                    })
-                });
-
-                const resultJson = await response.json();
-                if (resultJson.error) { throw new Error(resultJson.error.message); }
-
-                const aiContent = resultJson.candidates[0].content.parts[0].text;
-                const aiGrading = JSON.parse(aiContent);
-
-                totalSkor += (aiGrading.tambahan_poin || 0);
-                if (aiGrading.evaluasi && aiGrading.evaluasi.length > 0) {
-                    aiEvaluations = aiGrading.evaluasi;
-                }
-                aiText = "Koreksi Bagian 3 oleh AI selesai.";
-            }
-
-            const finalScore = Math.round((totalSkor / 40) * 100);
-            const gabunganEvaluasi = hasilInstan.concat(aiEvaluations);
-
-            // 3. Tampilkan Rapor Seketika ke Siswa (< 5 Detik)
-            document.getElementById('loading-section').style.display = 'none';
-            tampilkanRapor(finalScore, gabunganEvaluasi);
-
-            // 4. Kirim Rekap ke Google Sheets di Latar Belakang (Fire and Forget)
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    nama: document.getElementById('display-name').innerText,
-                    kelas: document.getElementById('display-class').innerText,
-                    bab: "Bab 1",
-                    finalScore: finalScore,
-                    aiText: aiText
-                })
-            }).catch(e => console.log("Background log error:", e));
-
-        } catch (error) {
-            document.getElementById('loading-section').style.display = 'none';
-            alert("Terjadi kendala saat memproses AI: " + error.message + ". Silakan klik Kumpulkan lagi.");
-            document.getElementById('btn-submit').style.display = 'block';
-        }
+        // Kirim Rekap ke Google Sheets di Latar Belakang (Tanpa loading screen)
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                nama: document.getElementById('display-name').innerText,
+                kelas: document.getElementById('display-class').innerText,
+                bab: "Bab 1",
+                finalScore: finalScore,
+                aiText: "Koreksi Lokal 100% (Non-AI)"
+            })
+        }).catch(e => console.log("Background log error:", e));
     }
 
     function tampilkanRapor(score, evaluations) {
