@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bab 3 Kotoba - Minna no Nihongo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1, h2, h3 { color: #2c3e50; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; margin-top: 20px;}
+        button:hover { background-color: #2980b9; }
+        
+        .question-box { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #ecf0f1; display: flex; align-items: center; flex-wrap: wrap; }
+        .question-box span { display: inline-block; width: 240px; font-weight: 500; }
+        .question-box input { flex: 1; min-width: 220px; }
+        .col-layout { flex-direction: column; align-items: flex-start; }
+        .col-layout span { width: 100%; margin-bottom: 8px; }
+        
+        /* Banner Gambar Soal */
+        .section-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 12px auto 18px auto;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            padding: 6px;
+            background-color: #fff;
+        }
+        
+        #exam-section, #result-section, #loading-section { display: none; }
+        .header-info { display: flex; justify-content: space-between; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: 25px;}
+        #timer { font-size: 1.5em; font-weight: bold; color: #e74c3c; }
+        
+        .correct { border: 2px solid #2ecc71 !important; background-color: #eafaf1; }
+        .incorrect { border: 2px solid #e74c3c !important; background-color: #fceceb; }
+        .feedback { font-size: 14px; margin-top: 8px; width: 100%; padding: 8px; border-radius: 4px; display: none;}
+        .feedback.benar { background-color: #d5f5e3; color: #1e8449; }
+        .feedback.salah { background-color: #fadbd8; color: #c0392b; }
+        .score-display { font-size: 48px; text-align: center; color: #27ae60; margin: 20px 0; font-weight: bold; }
+        
+        .loader { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-section">
+        <h1>テスト 第３課<br><small>Test Bab 3</small></h1>
+        <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
+        <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
+        <button onclick="startExam()">Mulai Ujian (30 Menit)</button>
+    </div>
+
+    <div id="exam-section">
+        <div class="header-info">
+            <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
+            <div id="timer">30:00</div>
+        </div>
+
+        <form id="exam-form">
+            <h3>Ⅰ. インドネシア語で翻訳しなさい。 (1 x 20)</h3>
+            <div id="part1"></div>
+            
+            <h3>Ⅱ. 日本語で翻訳しなさい。 (1 x 20)</h3>
+            <div id="part2"></div>
+            
+            <h3>Ⅲ. この質問を答えなさい。 (5 x 5)</h3>
+            <!-- Gambar Pertama untuk Soal 1 & 2 -->
+            <img src="bab3_soal1.png" class="section-img" alt="Tabel Profil Tokoh">
+            <div id="part3_sub1"></div>
+            
+            <!-- Gambar Kedua untuk Soal 3, 4, & 5 -->
+            <img src="bab3_soal2.png" class="section-img" alt="Barang, Negara, dan Harga">
+            <div id="part3_sub2"></div>
+            
+            <h3>Ⅳ. 日本語で書き換えてください。 (5 x 5)</h3>
+            <div id="part4"></div>
+
+            <h3>Ⅴ. ひらがなで書いてください。 (1 x 10)</h3>
+            <div id="part5"></div>
+            
+            <div id="loading-section" style="text-align: center;">
+                <div class="loader"></div>
+                <p><strong>Memproses nilai...</strong></p>
+            </div>
+
+            <button type="button" id="btn-submit" onclick="submitExam()">Kumpulkan Ujian</button>
+        </form>
+    </div>
+
+    <div id="result-section">
+        <h1>Rapor Ujian Bab 3</h1>
+        <div class="score-display" id="final-score">0 / 100</div>
+        <p style="text-align: center;">Gulir ke bawah untuk melihat rincian koreksi.</p>
+    </div>
+</div>
+
+<script>
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
+
+    let timeRemaining = 30 * 60; 
+    let timerInterval;
+
+    const absoluteKeys = {
+        // --- BAGIAN I ---
+        "p1_0": ["di sana", "sana", "sebelah sana"], "p1_1": ["ruang kelas", "kelas"], "p1_2": ["surat kabar", "koran"], 
+        "p1_3": ["ruang rapat", "ruang meeting"], "p1_4": ["peneliti", "periset", "ilmuwan"], "p1_5": ["kamar", "ruangan", "ruang"], 
+        "p1_6": ["tangga"], "p1_7": ["kartu nama"], "p1_8": ["buku catatan", "buku tulis", "notes"], 
+        "p1_9": ["pensil"], "p1_10": ["jam", "arloji", "jam tangan"], "p1_11": ["mana", "ke mana", "yang mana"], 
+        "p1_12": ["eskalator", "tangga berjalan"], "p1_13": ["bawah tanah", "basement"], "p1_14": ["mesin penjual otomatis", "mesin jual otomatis"], 
+        "p1_15": ["rumah"], "p1_16": ["kunci"], "p1_17": ["bukan", "berbeda", "salah"], 
+        "p1_18": ["tempat penjualan", "tempat jual", "bagian penjualan", "bagian"], "p1_19": ["lantai berapa"],
+
+        // --- BAGIAN II ---
+        "p2_0": ["ほん"], "p2_1": ["ここ", "こちら"], "p2_2": ["しょくどう"], "p2_3": ["うけつけ"], 
+        "p2_4": ["エレベーター"], "p2_5": ["かいしゃ"], "p2_6": ["くに", "おくに"], "p2_7": ["いくら"], 
+        "p2_8": ["くつ"], "p2_9": ["おてあらい", "トイレ"], "p2_10": ["つくえ"], "p2_11": ["ネクタイ"], 
+        "p2_12": ["でんわ"], "p2_13": ["コンピューター", "パソコン"], "p2_14": ["コーヒー"], "p2_15": ["どこ", "どちら"], 
+        "p2_16": ["シャープペンシル"], "p2_17": ["じむしょ"], "p2_18": ["このかばん"], "p2_19": ["いしゃ"],
+
+        // --- BAGIAN III ---
+        "p3_0": [
+            "ブラジルです。", "サントスさんのおくにはブラジルです。", "サントスさんのお国はブラジルです。",
+            "サントスさんのくにはブラジルです。", "サントスさんの国はブラジルです。"
+        ],
+        "p3_1": [
+            "さくらだいがくです。", "さくら大学です。", 
+            "ワットさんのだいがくはさくらだいがくです。", "ワットさんの大学はさくら大学です。"
+        ],
+        "p3_2": [
+            "かんこくのかばんです。", "韓国のかばんです。", "韓国の鞄です。", "かんこくのです。", "韓国のです。",
+            "これはかんこくのかばんです。", "これは韓国のかばんです。", "これはかんこくのです。", "これは韓国のです。",
+            "それはかんこくのかばんです。", "それは韓国のかばんです。", "それはかんこくのです。", "それは韓国のです。"
+        ],
+        "p3_3": [
+            "243,000えんです。", "243,000円です。", "にじゅうよんまんさんぜんえんです。",
+            "このコンピューターは243,000えんです。", "このコンピューターは243,000円です。",
+            "このコンピューターはにじゅうよんまんさんぜんえんです。"
+        ],
+        "p3_4": [
+            "ドイツのです。", "ドイツのくるまです。", "ドイツの車です。",
+            "このくるまはドイツのです。", "この車はドイツのです。",
+            "このくるまはドイツのくるまです。", "この車はドイツの車です。",
+            "そのくるまはドイツのです。", "その車はドイツのです。",
+            "そのくるまはドイツのくるまです。", "その車はドイツの車です。"
+        ],
+
+        // --- BAGIAN IV ---
+        "p4_0": ["ここはしょくどうです。", "ここは食堂です。", "こちらはしょくどうです。", "こちらは食堂です。"],
+        "p4_1": ["カリナさんはきょうしつです。", "カリナさんは教室です。", "カリナさんはきょうしつにいます。", "カリナさんは教室にいます。"],
+        "p4_2": ["おくにはインドネシアです。", "お国はインドネシアです。", "くにはインドネシアです。", "国はインドネシアです。"],
+        "p4_3": ["これはにほんのくるまです。", "これは日本の車です。", "これは日本のくるまです。"],
+        "p4_4": [
+            "このカメラは3,058,650ルピアです。", "このカメラは3,058,650るぴあです。",
+            "このカメラはさんびゃくごまんじゅうはっせんろっぴゃくごじゅうルピアです。",
+            "このカメラはさんびゃくごまんじゅうはっせんろっぴゃくごじゅうるぴあです。"
+        ],
+
+        // --- BAGIAN V ---
+        "p5_0": ["にじゅういち"],
+        "p5_1": ["さんびゃくよんじゅうご"],
+        "p5_2": ["ろっぴゃくはちじゅうさん"],
+        "p5_3": ["はっぴゃくきゅうじゅうなな", "はっぴゃくきゅうじゅうしち"],
+        "p5_4": ["せんはっぴゃく"],
+        "p5_5": ["さんぜんよんひゃくななじゅう", "さんぜんよんひゃくしちじゅう"],
+        "p5_6": ["ごまんはっせんろっぴゃく"],
+        "p5_7": ["よんじゅういちまんさんぜんにじゅうきゅう", "よんじゅういちまんさんぜんにじゅうく"],
+        "p5_8": ["はっぴゃくごじゅうまんごひゃく"],
+        "p5_9": ["さんぜんななひゃくきゅうじゅうはちまんはっせんさんびゃく"]
+    };
+
+    const part1 = [
+        { id: "p1_0", q: "1. あそこ", pts: 1 }, { id: "p1_1", q: "2. きょうしつ", pts: 1 }, { id: "p1_2", q: "3. しんぶん", pts: 1 }, 
+        { id: "p1_3", q: "4. かいぎしつ", pts: 1 }, { id: "p1_4", q: "5. けんきゅうしゃ", pts: 1 }, { id: "p1_5", q: "6. へや", pts: 1 }, 
+        { id: "p1_6", q: "7. かいだん", pts: 1 }, { id: "p1_7", q: "8. めいし", pts: 1 }, { id: "p1_8", q: "9. ノート", pts: 1 }, 
+        { id: "p1_9", q: "10. えんぴつ", pts: 1 }, { id: "p1_10", q: "11. とけい", pts: 1 }, { id: "p1_11", q: "12. どちら", pts: 1 }, 
+        { id: "p1_12", q: "13. エスカレーター", pts: 1 }, { id: "p1_13", q: "14. ちか", pts: 1 }, { id: "p1_14", q: "15. じどうはんばいき", pts: 1 }, 
+        { id: "p1_15", q: "16. うち", pts: 1 }, { id: "p1_16", q: "17. かぎ", pts: 1 }, { id: "p1_17", q: "18. ちがいます", pts: 1 }, 
+        { id: "p1_18", q: "19. うりば", pts: 1 }, { id: "p1_19", q: "20. なんがい", pts: 1 }
+    ];
+
+    const part2 = [
+        { id: "p2_0", q: "1. Buku", pts: 1 }, { id: "p2_1", q: "2. Disini", pts: 1 }, { id: "p2_2", q: "3. Kantin", pts: 1 }, 
+        { id: "p2_3", q: "4. Meja Informasi", pts: 1 }, { id: "p2_4", q: "5. Lift", pts: 1 }, { id: "p2_5", q: "6. Perusahaan", pts: 1 }, 
+        { id: "p2_6", q: "7. Negara", pts: 1 }, { id: "p2_7", q: "8. Berapa", pts: 1 }, { id: "p2_8", q: "9. Sepatu", pts: 1 }, 
+        { id: "p2_9", q: "10. Kamar Kecil", pts: 1 }, { id: "p2_10", q: "11. Meja", pts: 1 }, { id: "p2_11", q: "12. Dasi", pts: 1 }, 
+        { id: "p2_12", q: "13. Telepon", pts: 1 }, { id: "p2_13", q: "14. Komputer", pts: 1 }, { id: "p2_14", q: "15. Kopi", pts: 1 }, 
+        { id: "p2_15", q: "16. Dimana?", pts: 1 }, { id: "p2_16", q: "17. Pensil Mekanik", pts: 1 }, { id: "p2_17", q: "18. Kantor", pts: 1 }, 
+        { id: "p2_18", q: "19. Tas ini", pts: 1 }, { id: "p2_19", q: "20. Dokter", pts: 1 }
+    ];
+
+    const part3_sub1 = [
+        { id: "p3_0", q: "1. サントスさんのお国はどちらですか。", pts: 5 },
+        { id: "p3_1", q: "2. ワットさんのだいがくはどちらですか。", pts: 5 }
+    ];
+
+    const part3_sub2 = [
+        { id: "p3_2", q: "3. これはどこのかばんですか。", pts: 5 },
+        { id: "p3_3", q: "4. このコンピューターはいくらですか。", pts: 5 },
+        { id: "p3_4", q: "5. このくるまはどこのですか。", pts: 5 }
+    ];
+
+    const part4 = [
+        { id: "p4_0", q: "1. Di sini adalah kantin.", pts: 5 },
+        { id: "p4_1", q: "2. Karina-san ada di kelas.", pts: 5 },
+        { id: "p4_2", q: "3. Negaranya adalah Indonesia.", pts: 5 },
+        { id: "p4_3", q: "4. Ini adalah mobil Jepang.", pts: 5 },
+        { id: "p4_4", q: "5. Kamera ini 3.058.650 rupiah.", pts: 5 }
+    ];
+
+    const part5 = [
+        { id: "p5_0", q: "1. 21", pts: 1 },
+        { id: "p5_1", q: "2. 345", pts: 1 },
+        { id: "p5_2", q: "3. 683", pts: 1 },
+        { id: "p5_3", q: "4. 897", pts: 1 },
+        { id: "p5_4", q: "5. 1、800", pts: 1 },
+        { id: "p5_5", q: "6. 3、470", pts: 1 },
+        { id: "p5_6", q: "7. 58,600", pts: 1 },
+        { id: "p5_7", q: "8. 413、029", pts: 1 },
+        { id: "p5_8", q: "9. 8,500,500", pts: 1 },
+        { id: "p5_9", q: "10. 37、988、300", pts: 1 }
+    ];
+
+    const allQuestions = [...part1, ...part2, ...part3_sub1, ...part3_sub2, ...part4, ...part5];
+
+    function renderQuestions(partArray, containerId) {
+        const container = document.getElementById(containerId);
+        partArray.forEach(item => {
+            const isCol = item.pts >= 5;
+            container.innerHTML += `
+                <div class="question-box ${isCol ? 'col-layout' : ''}">
+                    <span>${item.q}</span>
+                    <input type="text" id="${item.id}" autocomplete="off">
+                    <div id="feed_${item.id}" class="feedback"></div>
+                </div>`;
+        });
+    }
+
+    renderQuestions(part1, 'part1');
+    renderQuestions(part2, 'part2');
+    renderQuestions(part3_sub1, 'part3_sub1');
+    renderQuestions(part3_sub2, 'part3_sub2');
+    renderQuestions(part4, 'part4');
+    renderQuestions(part5, 'part5');
+
+    function startExam() {
+        const name = document.getElementById('student-name').value;
+        const studentClass = document.getElementById('student-class').value;
+        if (!name || !studentClass) return alert("Isi Nama dan Kelas terlebih dahulu!");
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-class').innerText = studentClass;
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('exam-section').style.display = 'block';
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        if (timeRemaining <= 0) { clearInterval(timerInterval); submitExam(true); }
+        else { timeRemaining--; }
+        const m = Math.floor(timeRemaining / 60); const s = timeRemaining % 60;
+        document.getElementById('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function submitExam(isAuto = false) {
+        if (!isAuto && !confirm("Kumpulkan ujian sekarang?")) return;
+        clearInterval(timerInterval);
+        
+        document.getElementById('btn-submit').style.display = 'none';
+        document.getElementById('loading-section').style.display = 'block';
+        
+        let hasilInstan = [];
+        let poinLokal = 0;
+
+        allQuestions.forEach(item => {
+            const el = document.getElementById(item.id);
+            el.readOnly = true; 
+            
+            let jwbSiswa = el.value.trim();
+            let isBenar = false;
+
+            let jwbCek = item.id.startsWith("p1_") 
+                ? jwbSiswa.toLowerCase() 
+                : jwbSiswa.replace(/\s+/g, '').replace(/,/g, '');
+
+            let validKeys = (absoluteKeys[item.id] || []).map(k => {
+                return item.id.startsWith("p1_") 
+                    ? k.toLowerCase() 
+                    : k.replace(/\s+/g, '').replace(/,/g, '');
+            });
+
+            if (validKeys.includes(jwbCek)) {
+                isBenar = true;
+            }
+
+            if (isBenar) {
+                poinLokal += item.pts; 
+                hasilInstan.push({ id: item.id, status: "benar", komentar: "Tepat sekali!" });
+            } else {
+                let rujukan = absoluteKeys[item.id] ? absoluteKeys[item.id][0] : "";
+                hasilInstan.push({ id: item.id, status: "salah", komentar: `Jawaban tepat: ${rujukan}` });
+            }
+        });
+
+        const finalScore = Math.round((poinLokal / 100) * 100);
+
+        document.getElementById('loading-section').style.display = 'none';
+        tampilkanRapor(finalScore, hasilInstan);
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                nama: document.getElementById('display-name').innerText,
+                kelas: document.getElementById('display-class').innerText,
+                bab: "Bab 3",
+                finalScore: finalScore,
+                aiText: "Koreksi Lokal 100% (Non-AI)"
+            })
+        }).catch(e => console.log("Background log error:", e));
+    }
+
+    function tampilkanRapor(score, evaluations) {
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `${score} / 100`;
+        document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+
+        evaluations.forEach(ev => {
+            const inputEl = document.getElementById(ev.id);
+            const feedEl = document.getElementById(`feed_${ev.id}`);
+            if(inputEl && feedEl) {
+                if(ev.status === "benar") {
+                    inputEl.classList.add('correct');
+                    feedEl.classList.add('benar');
+                } else {
+                    inputEl.classList.add('incorrect');
+                    feedEl.classList.add('salah');
+                }
+                feedEl.innerHTML = `<strong>Koreksi:</strong> ${ev.komentar}`;
+                feedEl.style.display = 'block';
+            }
+        });
+    }
+</script>
+</body>
+</html>
