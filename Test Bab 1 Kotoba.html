@@ -77,10 +77,12 @@
 </div>
 
 <script>
-    // MASUKKAN URL GOOGLE APPS SCRIPT (WEB APP URL) ANDA DI SINI
+    // MASUKKAN API KEY GEMINI ANDA DI SINI
+    const GEMINI_API_KEY = "AQ.Ab8RN6KBKRxlYk9WHtvs9Rr4RuPwz0zbO7qx8HZEYadHGJ3RZg";
+    // MASUKKAN URL GOOGLE APPS SCRIPT (WEB APP URL) YANG BARU (Yang hanya mencatat Sheets)
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
 
-    let timeRemaining = 25 * 60; 
+    let timeRemaining = 15 * 60; // Durasi diperbarui jadi 15 menit
     let timerInterval;
 
     // KAMUS KUNCI MUTLAK
@@ -177,7 +179,7 @@
         document.getElementById('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
-    function submitExam(isAuto = false) {
+    async function submitExam(isAuto = false) {
         if (!isAuto && !confirm("Kumpulkan ujian sekarang?")) return;
         clearInterval(timerInterval);
         
@@ -188,7 +190,7 @@
         let soalUntukAI = [];
         let poinLokal = 0;
 
-        // PEMISAHAN KETAT: Bagian 1, 2, 4 dikoreksi HTML. Bagian 3 dikirim ke AI.
+        // 1. Koreksi Lokal (Bagian 1, 2, 4)
         allQuestions.forEach(item => {
             const el = document.getElementById(item.id);
             el.readOnly = true; 
@@ -212,30 +214,64 @@
             }
         });
 
-        const dataKirim = {
-            nama: document.getElementById('display-name').innerText,
-            kelas: document.getElementById('display-class').innerText,
-            bab: "Bab 1", hasilInstan: hasilInstan, soalUntukAI: soalUntukAI, poinLokal: poinLokal
-        };
+        let totalSkor = poinLokal;
+        let aiEvaluations = [];
+        let aiText = "Koreksi HTML Selesai.";
 
-        fetch(SCRIPT_URL, {
-            method: 'POST', body: JSON.stringify(dataKirim)
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('loading-section').style.display = 'none';
-            if(data.result === 'success') {
-                tampilkanRapor(data.score, data.evaluations);
-            } else {
-                alert("Gangguan AI (" + data.message + "). Silakan coba klik tombol Kumpulkan lagi.");
-                document.getElementById('btn-submit').style.display = 'block';
+        try {
+            // 2. Koreksi AI Langsung dari Browser (Bagian 3) menggunakan gemini-3.8-flash
+            if (soalUntukAI.length > 0) {
+                const aiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const prompt = "Evaluasi jawaban ujian bahasa Jepang (Bagian 3: Pemahaman Bebas). Beri nilai 0, 1, atau 2 poin maksimal per soal.\n\n" +
+                               "Data Jawaban Siswa:\n" + JSON.stringify(soalUntukAI) + "\n\n" +
+                               "Keluarkan HANYA format JSON murni berisi total 'tambahan_poin' (angka) dan 'evaluasi' (array) berisi id, status (benar/sebagian/salah), dan komentar singkat.";
+
+                const response = await fetch(aiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+                    })
+                });
+
+                const resultJson = await response.json();
+                if (resultJson.error) { throw new Error(resultJson.error.message); }
+
+                const aiContent = resultJson.candidates[0].content.parts[0].text;
+                const aiGrading = JSON.parse(aiContent);
+
+                totalSkor += (aiGrading.tambahan_poin || 0);
+                if (aiGrading.evaluasi && aiGrading.evaluasi.length > 0) {
+                    aiEvaluations = aiGrading.evaluasi;
+                }
+                aiText = "Koreksi Bagian 3 oleh AI selesai.";
             }
-        })
-        .catch(err => {
+
+            const finalScore = Math.round((totalSkor / 40) * 100);
+            const gabunganEvaluasi = hasilInstan.concat(aiEvaluations);
+
+            // 3. Tampilkan Rapor Seketika ke Siswa (< 5 Detik)
             document.getElementById('loading-section').style.display = 'none';
-            alert("Jaringan terputus. Jawaban aman, silakan klik Kumpulkan lagi saat sinyal stabil.");
+            tampilkanRapor(finalScore, gabunganEvaluasi);
+
+            // 4. Kirim Rekap ke Google Sheets di Latar Belakang (Fire and Forget)
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    nama: document.getElementById('display-name').innerText,
+                    kelas: document.getElementById('display-class').innerText,
+                    bab: "Bab 1",
+                    finalScore: finalScore,
+                    aiText: aiText
+                })
+            }).catch(e => console.log("Background log error:", e));
+
+        } catch (error) {
+            document.getElementById('loading-section').style.display = 'none';
+            alert("Terjadi kendala saat memproses AI: " + error.message + ". Silakan klik Kumpulkan lagi.");
             document.getElementById('btn-submit').style.display = 'block';
-        });
+        }
     }
 
     function tampilkanRapor(score, evaluations) {
