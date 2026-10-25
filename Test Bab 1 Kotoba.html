@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bab 1 Kotoba - Minna no Nihongo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1, h2, h3 { color: #2c3e50; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; transition: background 0.3s; font-weight: bold; margin-top: 20px;}
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .question-box { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #ecf0f1; display: flex; align-items: center; flex-wrap: wrap; }
+        .question-box span { display: inline-block; width: 220px; font-weight: 500; }
+        .question-box input { flex: 1; min-width: 200px; }
+        .col-layout { flex-direction: column; align-items: flex-start; }
+        .col-layout span { width: 100%; margin-bottom: 10px; }
+        
+        #exam-section, #result-section, #loading-section { display: none; }
+        .header-info { display: flex; justify-content: space-between; align-items: center; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: 25px; font-size: 16px;}
+        #timer { font-size: 1.5em; font-weight: bold; color: #e74c3c; }
+        
+        .correct { border: 2px solid #2ecc71 !important; background-color: #eafaf1; }
+        .incorrect { border: 2px solid #e74c3c !important; background-color: #fceceb; }
+        .feedback { font-size: 14px; margin-top: 8px; width: 100%; padding: 8px; border-radius: 4px; display: none;}
+        .feedback.benar { background-color: #d5f5e3; color: #1e8449; }
+        .feedback.salah { background-color: #fadbd8; color: #c0392b; }
+        .score-display { font-size: 48px; text-align: center; color: #27ae60; margin: 20px 0; font-weight: bold; }
+        
+        .loader { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-section">
+        <h1>テスト 第１課 (ことば)<br><small>Test Bab 1 Kotoba</small></h1>
+        <div class="form-group"><label>Nama Lengkap:</label><input type="text" id="student-name" required></div>
+        <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
+        <button onclick="startExam()">Mulai Ujian (25 Menit)</button>
+    </div>
+
+    <div id="exam-section">
+        <div class="header-info">
+            <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
+            <div id="timer">25:00</div>
+        </div>
+
+        <form id="exam-form">
+            <h3>Ⅰ. インドネシア語で翻訳しなさい。<br><small>(Terjemahkan ke bahasa Indonesia)</small></h3>
+            <div id="part1"></div>
+            
+            <h3>Ⅱ. 日本語で翻訳しなさい。<br><small>(Terjemahkan ke bahasa Jepang)</small></h3>
+            <div id="part2"></div>
+            
+            <h3>Ⅲ. この質問を答えなさい。<br><small>(Jawab pertanyaan ini)</small></h3>
+            <div id="part3"></div>
+            
+            <h3>Ⅳ. 日本語で書き換えてください。<br><small>(Tulis ke dalam bahasa Jepang)</small></h3>
+            <div id="part4"></div>
+            
+            <div id="loading-section" style="text-align: center;">
+                <div class="loader"></div>
+                <p><strong>Sensei AI sedang memeriksa ujian Anda...</strong><br><small id="loading-text">Mohon tunggu beberapa detik. Jangan tutup halaman ini.</small></p>
+            </div>
+
+            <button type="button" id="btn-submit" onclick="submitExam()">Kumpulkan Ujian</button>
+        </form>
+    </div>
+
+    <div id="result-section">
+        <h1>Rapor Ujian</h1>
+        <div class="score-display" id="final-score">0 / 100</div>
+        <p style="text-align: center;">Koreksi dan komentar AI dapat dilihat di lembar jawaban Anda di bawah.</p>
+    </div>
+</div>
+
+<script>
+    // MASUKKAN URL GOOGLE APPS SCRIPT (WEB APP URL) ANDA DI SINI
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
+
+    let timeRemaining = 25 * 60; 
+    let timerInterval;
+
+    // KAMUS KUNCI MUTLAK DITANAM DI HTML (Sistem 0 Detik)
+    const absoluteKeys = {
+        "p1_0": ["beliau", "orang itu", "orang itu (sopan)"],
+        "p1_1": ["guru", "pengajar", "dosen"],
+        "p1_2": ["mahasiswa", "pelajar", "murid"],
+        "p1_3": ["pegawai bank", "karyawan bank", "staf bank"],
+        "p1_4": ["peneliti", "periset"],
+        "p1_5": ["universitas", "kampus", "perguruan tinggi"],
+        "p1_6": ["umur berapa", "usia berapa", "berapa umurnya"],
+        "p1_7": ["orang jepang", "warga negara jepang"],
+        "p1_8": ["siapa", "siapa (sopan)"],
+        "p1_9": ["bahasa inggris", "inggris"],
+        "p2_0": ["あなた"],
+        "p2_1": ["きょうし", "せんせい"],
+        "p2_2": ["かいしゃいん", "しゃいん"],
+        "p2_3": ["いしゃ"],
+        "p2_4": ["びょういん"],
+        "p2_5": ["かんこく"],
+        "p2_6": ["ドイツご", "どいつご"],
+        "p2_7": ["だれ", "どなた"],
+        "p2_8": ["どうぞ"],
+        "p2_9": ["ロシア"],
+        "p4_0": ["わたしはがくせいです", "わたしはがくせいです。"],
+        "p4_1": ["カリナさんはインドネシアじんです", "カリナさんはインドネシアじんです。"],
+        "p4_2": ["やまださんはぎんこういんです", "やまださんはぎんこういんです。"],
+        "p4_3": ["わたしは28さいです", "わたしは28さいです。", "わたしはにじゅうはっさいです", "わたしはにじゅうはっさいです。"],
+        "p4_4": ["ミラーさんはimcのしゃいんです", "ミラーさんはimcのしゃいんです。", "みらーさんはimcのしゃいんです"]
+    };
+
+    const part1 = [
+        { id: "p1_0", q: "1. あのかた", ref: "beliau", pts: 1 }, { id: "p1_1", q: "2. せんせい", ref: "guru", pts: 1 },
+        { id: "p1_2", q: "3. がくせい", ref: "pelajar", pts: 1 }, { id: "p1_3", q: "4. ぎんこういん", ref: "pegawai bank", pts: 1 },
+        { id: "p1_4", q: "5. けんきゅうしゃ", ref: "peneliti", pts: 1 }, { id: "p1_5", q: "6. だいがく", ref: "universitas", pts: 1 },
+        { id: "p1_6", q: "7. おいくつ", ref: "umur berapa", pts: 1 }, { id: "p1_7", q: "8. にほんじん", ref: "orang jepang", pts: 1 },
+        { id: "p1_8", q: "9. どなた", ref: "siapa", pts: 1 }, { id: "p1_9", q: "10. えいご", ref: "bahasa inggris", pts: 1 }
+    ];
+    const part2 = [
+        { id: "p2_0", q: "1. Kamu / Anda", ref: "あなた", pts: 1 }, { id: "p2_1", q: "2. Pengajar / Guru", ref: "きょうし", pts: 1 },
+        { id: "p2_2", q: "3. Karyawan", ref: "かいしゃいん", pts: 1 }, { id: "p2_3", q: "4. Dokter", ref: "いしゃ", pts: 1 },
+        { id: "p2_4", q: "5. Rumah Sakit", ref: "びょういん", pts: 1 }, { id: "p2_5", q: "6. Korea Selatan", ref: "かんこく", pts: 1 },
+        { id: "p2_6", q: "7. Bahasa Jerman", ref: "ドイツご", pts: 1 }, { id: "p2_7", q: "8. Siapa?", ref: "だれ", pts: 1 },
+        { id: "p2_8", q: "9. Silahkan", ref: "どうぞ", pts: 1 }, { id: "p2_9", q: "10. Rusia", ref: "ロシア", pts: 1 }
+    ];
+    const part3 = [
+        { id: "p3_0", q: "1. カリナさんはがくせいです。あなたもがくせいですか。", ref: "はい、わたしもがくせいです", pts: 2 },
+        { id: "p3_1", q: "2. あなたはにほんじんですか。", ref: "いいえ、わたしはにほんじんじゃありません", pts: 2 },
+        { id: "p3_2", q: "3. あなたはパラヒヤンガン大学のがくせいですか。", ref: "はい/いいえ, ...", pts: 2 },
+        { id: "p3_3", q: "4. あなたはなんさいですか。", ref: "Menyebutkan umur (misal: わたしは20さいです)", pts: 2 },
+        { id: "p3_4", q: "5. カリナさんはインドネシアじんですか。", ref: "はい、インドネシアじんです", pts: 2 }
+    ];
+    const part4 = [
+        { id: "p4_0", q: "1. Saya adalah pelajar.", ref: "わたしはがくせいです", pts: 2 },
+        { id: "p4_1", q: "2. Karina adalah orang Indonesia.", ref: "カリナさんはインドネシアじんです", pts: 2 },
+        { id: "p4_2", q: "3. Yamada adalah pegawai bank.", ref: "やまださんはぎんこういんです", pts: 2 },
+        { id: "p4_3", q: "4. Saya berumur 28 tahun.", ref: "わたしはにじゅうはっさいです", pts: 2 },
+        { id: "p4_4", q: "5. Mira- adalah pegawai IMC.", ref: "ミラーさんはIMCのしゃいんです", pts: 2 }
+    ];
+
+    const allQuestions = [...part1, ...part2, ...part3, ...part4];
+
+    function renderQuestions(partArray, containerId) {
+        const container = document.getElementById(containerId);
+        partArray.forEach(item => {
+            const isCol = item.pts === 2;
+            container.innerHTML += `
+                <div class="question-box ${isCol ? 'col-layout' : ''}">
+                    <span>${item.q}</span>
+                    <input type="text" id="${item.id}" autocomplete="off">
+                    <div id="feed_${item.id}" class="feedback"></div>
+                </div>`;
+        });
+    }
+
+    renderQuestions(part1, 'part1'); renderQuestions(part2, 'part2');
+    renderQuestions(part3, 'part3'); renderQuestions(part4, 'part4');
+
+    function startExam() {
+        const name = document.getElementById('student-name').value;
+        const studentClass = document.getElementById('student-class').value;
+        if (!name || !studentClass) return alert("Isi Nama dan Kelas terlebih dahulu!");
+        
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-class').innerText = studentClass;
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('exam-section').style.display = 'block';
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        if (timeRemaining <= 0) { clearInterval(timerInterval); submitExam(true); }
+        else { timeRemaining--; }
+        const m = Math.floor(timeRemaining / 60); const s = timeRemaining % 60;
+        document.getElementById('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function submitExam(isAuto = false) {
+        if (!isAuto && !confirm("Kumpulkan ujian sekarang?")) return;
+        clearInterval(timerInterval);
+        
+        document.getElementById('btn-submit').style.display = 'none';
+        document.getElementById('loading-section').style.display = 'block';
+        
+        let hasilInstan = [];
+        let soalUntukAI = [];
+        let poinLokal = 0;
+
+        // FILTER JAWABAN (Pemisahan Tugas HTML vs AI)
+        allQuestions.forEach(item => {
+            const el = document.getElementById(item.id);
+            el.readOnly = true; 
+            
+            let jwbSiswa = el.value.trim();
+            // Normalisasi: Bagian 1 di-lowercase, teks Jepang dihilangkan spasinya
+            let jwbCek = item.id.startsWith("p1_") ? jwbSiswa.toLowerCase() : jwbSiswa.replace(/\s+/g, '').toLowerCase();
+
+            if (absoluteKeys[item.id] && absoluteKeys[item.id].includes(jwbCek)) {
+                poinLokal += item.pts; // Hitung poin langsung
+                hasilInstan.push({ id: item.id, status: "benar", komentar: "Tepat sekali!" });
+            } else {
+                soalUntukAI.push({
+                    id: item.id, soal: item.q, 
+                    jawaban_siswa: jwbSiswa || "(Kosong)", 
+                    poin_maksimal: item.pts
+                });
+            }
+        });
+
+        const dataKirim = {
+            nama: document.getElementById('display-name').innerText,
+            kelas: document.getElementById('display-class').innerText,
+            bab: "Bab 1",
+            hasilInstan: hasilInstan,
+            soalUntukAI: soalUntukAI,
+            poinLokal: poinLokal
+        };
+
+        // MESIN ANTREAN SILUMAN (Auto-Retry)
+        let retryCount = 0;
+        const maxRetries = 4; // Total 5 kali percobaan jika AI sibuk
+
+        function sendData() {
+            fetch(SCRIPT_URL, {
+                method: 'POST', body: JSON.stringify(dataKirim)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.result === 'success') {
+                    document.getElementById('loading-section').style.display = 'none';
+                    tampilkanRapor(data.score, data.evaluations);
+                } else {
+                    handleRetry("AI menolak koneksi (" + data.message + ")");
+                }
+            })
+            .catch(err => {
+                handleRetry("Gangguan Jaringan");
+            });
+        }
+
+        function handleRetry(reason) {
+            if (retryCount < maxRetries) {
+                retryCount++;
+                document.getElementById('loading-text').innerHTML = `Lalu lintas AI sedang padat. Mencoba mengantre ulang otomatis (${retryCount}/4)...<br>Jangan tutup halaman ini.`;
+                setTimeout(sendData, 4000); // Tunggu 4 detik sebelum mencoba lagi
+            } else {
+                document.getElementById('loading-section').style.display = 'none';
+                alert("Gagal terhubung ke AI setelah 5 percobaan. Jawaban Anda AMAN dan tidak hilang.\n\nSilakan klik tombol 'Kumpulkan Ujian' lagi.");
+                document.getElementById('btn-submit').style.display = 'block';
+            }
+        }
+
+        sendData(); // Jalankan pengiriman pertama
+    }
+
+    function tampilkanRapor(score, evaluations) {
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `${score} / 100`;
+        document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+
+        evaluations.forEach(ev => {
+            const inputEl = document.getElementById(ev.id);
+            const feedEl = document.getElementById(`feed_${ev.id}`);
+            if(inputEl && feedEl) {
+                if(ev.status === "benar" || ev.status === "sebagian") {
+                    inputEl.classList.add('correct');
+                    feedEl.classList.add('benar');
+                } else {
+                    inputEl.classList.add('incorrect');
+                    feedEl.classList.add('salah');
+                }
+                feedEl.innerHTML = `<strong>Sensei AI:</strong> ${ev.komentar}`;
+                feedEl.style.display = 'block';
+            }
+        });
+    }
+</script>
+</body>
+</html>
