@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bab 2 Kotoba - Minna no Nihongo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 850px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1, h2, h3 { color: #2c3e50; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; margin-top: 20px;}
+        button:hover { background-color: #2980b9; }
+        
+        .question-box { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #ecf0f1; display: flex; align-items: center; flex-wrap: wrap; }
+        .question-box span { display: inline-block; width: 240px; font-weight: 500; }
+        .question-box input { flex: 1; min-width: 220px; }
+        .col-layout { flex-direction: column; align-items: flex-start; }
+        .col-layout span { width: 100%; margin-bottom: 10px; }
+        
+        /* CSS Khusus untuk Gambar Soal */
+        .question-img {
+            display: block;
+            max-width: 200px;
+            max-height: 150px;
+            width: auto;
+            height: auto;
+            margin: 10px 0 15px 0;
+            border: 1px solid #dcdde1;
+            border-radius: 6px;
+            background-color: #fff;
+            padding: 4px;
+        }
+        
+        #exam-section, #result-section, #loading-section { display: none; }
+        .header-info { display: flex; justify-content: space-between; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: 25px;}
+        #timer { font-size: 1.5em; font-weight: bold; color: #e74c3c; }
+        
+        .correct { border: 2px solid #2ecc71 !important; background-color: #eafaf1; }
+        .incorrect { border: 2px solid #e74c3c !important; background-color: #fceceb; }
+        .feedback { font-size: 14px; margin-top: 8px; width: 100%; padding: 8px; border-radius: 4px; display: none;}
+        .feedback.benar { background-color: #d5f5e3; color: #1e8449; }
+        .feedback.salah { background-color: #fadbd8; color: #c0392b; }
+        .score-display { font-size: 48px; text-align: center; color: #27ae60; margin: 20px 0; font-weight: bold; }
+        
+        .loader { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-section">
+        <h1>テスト 第２課<br><small>Test Bab 2</small></h1>
+        <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
+        <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
+        <button onclick="startExam()">Mulai Ujian (25 Menit)</button>
+    </div>
+
+    <div id="exam-section">
+        <div class="header-info">
+            <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
+            <div id="timer">25:00</div>
+        </div>
+
+        <form id="exam-form">
+            <h3>Ⅰ. インドネシア語で翻訳しなさい。 (1 x 20)</h3>
+            <div id="part1"></div>
+            
+            <h3>Ⅱ. 日本語で翻訳しなさい。 (1 x 20)</h3>
+            <div id="part2"></div>
+            
+            <h3>Ⅲ. この質問を答えなさい。 (2 x 5)</h3>
+            <div id="part3"></div>
+            
+            <h3>Ⅳ. 日本語で書き換えてください。 (2 x 5)</h3>
+            <div id="part4"></div>
+
+            <h3>Ⅴ. 正しい順番に書いてください。 (1 x 5)</h3>
+            <div id="part5"></div>
+            
+            <div id="loading-section" style="text-align: center;">
+                <div class="loader"></div>
+                <p><strong>Memproses nilai...</strong></p>
+            </div>
+
+            <button type="button" id="btn-submit" onclick="submitExam()">Kumpulkan Ujian</button>
+        </form>
+    </div>
+
+    <div id="result-section">
+        <h1>Rapor Ujian Bab 2</h1>
+        <div class="score-display" id="final-score">0 / 100</div>
+        <p style="text-align: center;">Gulir ke bawah untuk melihat rincian koreksi.</p>
+    </div>
+</div>
+
+<script>
+    // URL Web App GAS Anda
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
+
+    let timeRemaining = 25 * 60; 
+    let timerInterval;
+
+    const absoluteKeys = {
+        // --- BAGIAN I ---
+        "p1_0": ["guru", "pengajar", "dosen"], "p1_1": ["rumah sakit"], "p1_2": ["surat kabar", "koran"], 
+        "p1_3": ["kamus"], "p1_4": ["peneliti", "periset", "ilmuwan"], "p1_5": ["universitas", "perguruan tinggi", "kampus"], 
+        "p1_6": ["buku catatan", "buku saku", "agenda"], "p1_7": ["kartu nama"], "p1_8": ["buku catatan", "buku tulis", "notes"], 
+        "p1_9": ["pensil"], "p1_10": ["jam", "arloji", "jam tangan"], "p1_11": ["tas"], "p1_12": ["radio"], 
+        "p1_13": ["kartu"], "p1_14": ["bahasa inggris"], "p1_15": ["itu"], "p1_16": ["kunci"], 
+        "p1_17": ["bahasa jepang"], "p1_18": ["mobil"], "p1_19": ["kursi"],
+
+        // --- BAGIAN II ---
+        "p2_0": ["ほん"], "p2_1": ["ざっし"], "p2_2": ["かいしゃいん", "しゃいん"], "p2_3": ["カード"], 
+        "p2_4": ["ボールペン"], "p2_5": ["カメラ"], "p2_6": ["ドイツご"], "p2_7": ["なんさい", "おいくつ"], 
+        "p2_8": ["けんきゅうしゃ"], "p2_9": ["ロシア"], "p2_10": ["つくえ"], "p2_11": ["かさ"], 
+        "p2_12": ["テレビ"], "p2_13": ["コンピューター", "パソコン"], "p2_14": ["コーヒー"], "p2_15": ["かぎ"], 
+        "p2_16": ["シャープペンシル"], "p2_17": ["めいし"], "p2_18": ["このくるま"], "p2_19": ["おみやげ", "みやげ"],
+
+        // --- BAGIAN III ---
+        "p3_0": ["これはかぎです。", "それはかぎです。", "かぎです。", "これは鍵です。", "それは鍵です。", "鍵です。"],
+        "p3_1": ["カリナさんのです。", "カリナさんのノートです。", "これはカリナさんのです。", "それはカリナさんのです。", "これはカリナさんのノートです。", "それはカリナさんのノートです。"],
+        "p3_2": ["シャープペンシルです。", "これはシャープペンシルです。", "それはシャープペンシルです。"],
+        "p3_3": [
+            "いいえ、くるまのざっしです。", "いいえ、車の雑誌です。", "いいえ、くるまのほんです。", "いいえ、車の本です。",
+            "いいえ、これはくるまのざっしです。", "いいえ、これは車の雑誌です。", "いいえ、これはくるまのほんです。", "いいえ、これは車の本です。",
+            "いいえ、カメラのざっしじゃありません。くるまのざっしです。", "いいえ、カメラの雑誌じゃありません。車の雑誌です。",
+            "いいえ、これはカメラのざっしじゃありません。くるまのざっしです。", "いいえ、これはカメラの雑誌じゃありません。車の雑誌です。",
+            "いいえ、これはカメラのざっしじゃありません。これはくるまのざっしです。", "いいえ、これはカメラの雑誌じゃありません。これは車の雑誌です。",
+            "いいえ、カメラのざっしではありません。くるまのざっしです。", "いいえ、カメラの雑誌ではありません。車の雑誌です。",
+            "いいえ、これはカメラのざっしではありません。くるまのざっしです。", "いいえ、これはカメラの雑誌ではありません。車の雑誌です。",
+            "いいえ、これはカメラのざっしではありません。これはくるまのざっしです。", "いいえ、これはカメラの雑誌ではありません。これは車の雑誌です。",
+            "いいえ、ちがいます。くるまのざっしです。", "いいえ、違います。車の雑誌です。",
+            "いいえ、ちがいます。これはくるまのざっしです。", "いいえ、違います。これは車の雑誌です。",
+            "いいえ、そうじゃありません。くるまのざっしです。", "いいえ、そうじゃありません。車の雑誌です。",
+            "いいえ、そうではありません。くるまのざっしです。", "いいえ、そうではありません。車の雑誌です。"
+        ],
+        "p3_4": [
+            "いいえ、さとうさんのかさです。", "いいえ、佐藤さんのかさです。", "いいえ、佐藤さんの傘です。",
+            "いいえ、さとうさんのです。", "いいえ、佐藤さんのです。",
+            "いいえ、これはさとうさんのかさです。", "いいえ、これは佐藤さんのかさです。", "いいえ、これは佐藤さんの傘です。",
+            "いいえ、これはさとうさんのです。", "いいえ、これは佐藤さんのです。",
+            "いいえ、それはさとうさんのかさです。", "いいえ、それは佐藤さんのかさです。", "いいえ、それは佐藤さんの傘です。",
+            "いいえ、それはさとうさんのです。", "いいえ、それは佐藤さんのです。",
+            "いいえ、わたしのかさじゃありません。", "いいえ、私のかさじゃありません。", "いいえ、私の傘じゃありません。",
+            "いいえ、わたしのかさではありません。", "いいえ、私のかさではありません。", "いいえ、私の傘ではありません。",
+            "いいえ、わたしのじゃありません。", "いいえ、私のじゃありません。",
+            "いいえ、わたしのではありません。", "いいえ、私のではありません。",
+            "いいえ、これはわたしのかさじゃありません。", "いいえ、これは私のかさじゃありません。",
+            "いいえ、これはわたしのかさではありません。", "いいえ、これは私のかさではありません。",
+            "いいえ、それはわたしのかさじゃありません。", "いいえ、それは私のかさじゃありません。",
+            "いいえ、それはわたしのかさではありません。", "いいえ、それは私のかさではありません。",
+            "いいえ、わたしのかさじゃありません。さとうさんのかさです。", "いいえ、私のかさじゃありません。佐藤さんの傘です。",
+            "いいえ、わたしのかさではありません。さとうさんのかさです。", "いいえ、私のかさではありません。佐藤さんの傘です。",
+            "いいえ、わたしのじゃありません。さとうさんのです。", "いいえ、私のじゃありません。佐藤さんのです。",
+            "いいえ、ちがいます。さとうさんのかさです。", "いいえ、違います。佐藤さんのかさです。",
+            "いいえ、ちがいます。佐藤さんの傘です。", "いいえ、ちがいます。さとうさんのです。", "いいえ、違います。佐藤さんのです。"
+        ],
+
+        // --- BAGIAN IV ---
+        "p4_0": ["これはたなかさんのてちょうです。", "これは田中さんの手帳です。", "これはたなかさんのノートです。", "これは田中さんのノートです。"],
+        "p4_1": ["それは1ですか、2ですか。", "それは1ですか、2ですか？", "それは１ですか、２ですか。", "それはいちですか、にですか。", "それは一ですか、二ですか。"],
+        "p4_2": ["これはくるまのざっしです。", "これは車の雑誌です。"],
+        "p4_3": ["わたしは20さいです。", "私は20歳です。", "わたしははたちです。", "私は二十歳です。", "わたしはにじゅっさいです。", "わたしはにじゅうさいです。"],
+        "p4_4": ["このかばんはわたしのです。", "この鞄は私のです。", "このかばんはわたしのかばんです。"],
+
+        // --- BAGIAN V ---
+        "p5_0": ["これはにほんごのじしょです。"],
+        "p5_1": ["あれは山田さんのくるまです。", "あれはやまださんのくるまです。"],
+        "p5_2": ["それはあなたのかばんですか。", "それはあなたのかばんですか？"],
+        "p5_3": ["ハニフさんは18さいじゃありません。", "ハニフさんは１８さいじゃありません。"],
+        "p5_4": ["このかばんはわたしのじゃありません。"]
+    };
+
+    const part1 = [
+        { id: "p1_0", q: "1. きょうし", pts: 1 }, { id: "p1_1", q: "2. びょういん", pts: 1 }, { id: "p1_2", q: "3. しんぶん", pts: 1 }, 
+        { id: "p1_3", q: "4. じしょ", pts: 1 }, { id: "p1_4", q: "5. けんきゅうしゃ", pts: 1 }, { id: "p1_5", q: "6. だいがく", pts: 1 },
+        { id: "p1_6", q: "7. てちょう", pts: 1 }, { id: "p1_7", q: "8. めいし", pts: 1 }, { id: "p1_8", q: "9. ノート", pts: 1 }, 
+        { id: "p1_9", q: "10. えんぴつ", pts: 1 }, { id: "p1_10", q: "11. とけい", pts: 1 }, { id: "p1_11", q: "12. かばん", pts: 1 },
+        { id: "p1_12", q: "13. ラジオ", pts: 1 }, { id: "p1_13", q: "14. カード", pts: 1 }, { id: "p1_14", q: "15. えいご", pts: 1 }, 
+        { id: "p1_15", q: "16. それ", pts: 1 }, { id: "p1_16", q: "17. かぎ", pts: 1 }, { id: "p1_17", q: "18. にほんご", pts: 1 },
+        { id: "p1_18", q: "19. くるま", pts: 1 }, { id: "p1_19", q: "20. いす", pts: 1 }
+    ];
+
+    const part2 = [
+        { id: "p2_0", q: "1. Buku", pts: 1 }, { id: "p2_1", q: "2. Majalah", pts: 1 }, { id: "p2_2", q: "3. Karyawan", pts: 1 }, 
+        { id: "p2_3", q: "4. Kartu", pts: 1 }, { id: "p2_4", q: "5. Ballpoint", pts: 1 }, { id: "p2_5", q: "6. Kamera", pts: 1 },
+        { id: "p2_6", q: "7. Bahasa Jerman", pts: 1 }, { id: "p2_7", q: "8. Umur berapa", pts: 1 }, { id: "p2_8", q: "9. Peneliti", pts: 1 }, 
+        { id: "p2_9", q: "10. Rusia", pts: 1 }, { id: "p2_10", q: "11. Meja", pts: 1 }, { id: "p2_11", q: "12. Payung", pts: 1 },
+        { id: "p2_12", q: "13. Televisi", pts: 1 }, { id: "p2_13", q: "14. Komputer", pts: 1 }, { id: "p2_14", q: "15. Kopi", pts: 1 }, 
+        { id: "p2_15", q: "16. Kunci", pts: 1 }, { id: "p2_16", q: "17. Pensil Mekanik", pts: 1 }, { id: "p2_17", q: "18. Kartu Nama", pts: 1 },
+        { id: "p2_18", q: "19. Mobil ini", pts: 1 }, { id: "p2_19", q: "20. Oleh-oleh", pts: 1 }
+    ];
+
+    const part3 = [
+        { id: "p3_0", q: "1. これはなんですか。", img: "bab2_soal1.png", pts: 2 },
+        { id: "p3_1", q: "2. これはだれのですか。", img: "bab2_soal2.png", pts: 2 },
+        { id: "p3_2", q: "3. これはボールペンですか、シャープペンシルですか。", img: "bab2_soal3.png", pts: 2 },
+        { id: "p3_3", q: "4. それはカメラのざっしですか。", img: "bab2_soal4.png", pts: 2 },
+        { id: "p3_4", q: "5. これはあなたのかさですか。", img: "bab2_soal5.png", pts: 2 }
+    ];
+
+    const part4 = [
+        { id: "p4_0", q: "1. Ini adalah buku catatan Tanaka-san.", pts: 2 },
+        { id: "p4_1", q: "2. Itu adalah 1 atau 2?.", pts: 2 },
+        { id: "p4_2", q: "3. Ini adalah majalah mobil.", pts: 2 },
+        { id: "p4_3", q: "4. Saya berumur 20 tahun.", pts: 2 },
+        { id: "p4_4", q: "5. Tas ini punya saya.", pts: 2 }
+    ];
+
+    const part5 = [
+        { id: "p5_0", q: "1. にほんご / これ / です。 / の / じしょ / は", pts: 1 },
+        { id: "p5_1", q: "2. 山田さん / くるま / は / の / あれ / です。 ", pts: 1 },
+        { id: "p5_2", q: "3. は / ですか。 / あなた / それ / かばん / の", pts: 1 },
+        { id: "p5_3", q: "4. 18さい / ハニフさん / じゃありません。 / は", pts: 1 },
+        { id: "p5_4", q: "5. わたし / は / じゃありません。 / かばん / の / この", pts: 1 }
+    ];
+
+    const allQuestions = [...part1, ...part2, ...part3, ...part4, ...part5];
+
+    function renderQuestions(partArray, containerId) {
+        const container = document.getElementById(containerId);
+        partArray.forEach(item => {
+            const isCol = item.pts >= 2 || item.id.startsWith("p5_");
+            const imgHtml = item.img ? `<img src="${item.img}" class="question-img" alt="Ilustrasi soal">` : '';
+            
+            container.innerHTML += `
+                <div class="question-box ${isCol ? 'col-layout' : ''}">
+                    <span>${item.q}</span>
+                    ${imgHtml}
+                    <input type="text" id="${item.id}" autocomplete="off">
+                    <div id="feed_${item.id}" class="feedback"></div>
+                </div>`;
+        });
+    }
+
+    renderQuestions(part1, 'part1');
+    renderQuestions(part2, 'part2');
+    renderQuestions(part3, 'part3');
+    renderQuestions(part4, 'part4');
+    renderQuestions(part5, 'part5');
+
+    function startExam() {
+        const name = document.getElementById('student-name').value;
+        const studentClass = document.getElementById('student-class').value;
+        if (!name || !studentClass) return alert("Isi Nama dan Kelas terlebih dahulu!");
+        document.getElementById('display-name').innerText = name;
+        document.getElementById('display-class').innerText = studentClass;
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('exam-section').style.display = 'block';
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        if (timeRemaining <= 0) { clearInterval(timerInterval); submitExam(true); }
+        else { timeRemaining--; }
+        const m = Math.floor(timeRemaining / 60); const s = timeRemaining % 60;
+        document.getElementById('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function submitExam(isAuto = false) {
+        if (!isAuto && !confirm("Kumpulkan ujian sekarang?")) return;
+        clearInterval(timerInterval);
+        
+        document.getElementById('btn-submit').style.display = 'none';
+        document.getElementById('loading-section').style.display = 'block';
+        
+        let hasilInstan = [];
+        let poinLokal = 0;
+
+        allQuestions.forEach(item => {
+            const el = document.getElementById(item.id);
+            el.readOnly = true; 
+            
+            let jwbSiswa = el.value.trim();
+            let isBenar = false;
+
+            let jwbCek = item.id.startsWith("p1_") ? jwbSiswa.toLowerCase() : jwbSiswa.replace(/\s+/g, '');
+            let validKeys = (absoluteKeys[item.id] || []).map(k => item.id.startsWith("p1_") ? k.toLowerCase() : k.replace(/\s+/g, ''));
+
+            if (validKeys.includes(jwbCek)) {
+                isBenar = true;
+            }
+
+            if (isBenar) {
+                poinLokal += item.pts; 
+                hasilInstan.push({ id: item.id, status: "benar", komentar: "Tepat sekali!" });
+            } else {
+                let rujukan = absoluteKeys[item.id] ? absoluteKeys[item.id][0] : "";
+                hasilInstan.push({ id: item.id, status: "salah", komentar: `Jawaban tepat: ${rujukan}` });
+            }
+        });
+
+        const finalScore = Math.round((poinLokal / 65) * 100);
+
+        document.getElementById('loading-section').style.display = 'none';
+        tampilkanRapor(finalScore, hasilInstan);
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                nama: document.getElementById('display-name').innerText,
+                kelas: document.getElementById('display-class').innerText,
+                bab: "Bab 2",
+                finalScore: finalScore,
+                aiText: "Koreksi Lokal 100% (Non-AI)"
+            })
+        }).catch(e => console.log("Background log error:", e));
+    }
+
+    function tampilkanRapor(score, evaluations) {
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `${score} / 100`;
+        document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+
+        evaluations.forEach(ev => {
+            const inputEl = document.getElementById(ev.id);
+            const feedEl = document.getElementById(`feed_${ev.id}`);
+            if(inputEl && feedEl) {
+                if(ev.status === "benar") {
+                    inputEl.classList.add('correct');
+                    feedEl.classList.add('benar');
+                } else {
+                    inputEl.classList.add('incorrect');
+                    feedEl.classList.add('salah');
+                }
+                feedEl.innerHTML = `<strong>Koreksi:</strong> ${ev.komentar}`;
+                feedEl.style.display = 'block';
+            }
+        });
+    }
+</script>
+</body>
+</html>
