@@ -35,7 +35,7 @@
         }
         
         #exam-section, #result-section, #loading-section { display: none; }
-        .header-info { display: flex; justify-content: space-between; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: 25px;}
+        .header-info { display: flex; justify-content: space-between; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: px;}
         #timer { font-size: 1.5em; font-weight: bold; color: #e74c3c; }
         
         .correct { border: 2px solid #2ecc71 !important; background-color: #eafaf1; }
@@ -56,13 +56,13 @@
         <h1>テスト 第２課<br><small>Test Bab 2</small></h1>
         <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
         <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
-        <button onclick="startExam()">Mulai Ujian (25 Menit)</button>
+        <button onclick="startExam()">Mulai Ujian (15 Menit)</button>
     </div>
 
     <div id="exam-section">
         <div class="header-info">
             <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
-            <div id="timer">25:00</div>
+            <div id="timer">15:00</div>
         </div>
 
         <form id="exam-form">
@@ -101,7 +101,7 @@
     // URL Web App GAS Anda
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
 
-    let timeRemaining = 25 * 60; 
+    let timeRemaining = 15 * 60; 
     let timerInterval;
 
     const absoluteKeys = {
