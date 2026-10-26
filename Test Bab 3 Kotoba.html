@@ -54,13 +54,13 @@
         <h1>テスト 第３課<br><small>Test Bab 3</small></h1>
         <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
         <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
-        <button onclick="startExam()">Mulai Ujian (30 Menit)</button>
+        <button onclick="startExam()">Mulai Ujian (15 Menit)</button>
     </div>
 
     <div id="exam-section">
         <div class="header-info">
             <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
-            <div id="timer">30:00</div>
+            <div id="timer">15:00</div>
         </div>
 
         <form id="exam-form">
@@ -104,7 +104,7 @@
 <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec'; 
 
-    let timeRemaining = 30 * 60; 
+    let timeRemaining = 15 * 60; 
     let timerInterval;
 
     const absoluteKeys = {
