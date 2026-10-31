@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Review 1-25 - Minna no Nihongo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, 'Yu Gothic', sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h1, h2, h3 { color: #2c3e50; text-align: center; }
+        h3 small { display: block; font-weight: normal; font-size: 13px; color: #7f8c8d; margin-top: 4px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #34495e; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; margin-top: 20px;}
+        button:hover { background-color: #2980b9; }
+        .question-box { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #ecf0f1; display: flex; flex-direction: column; align-items: flex-start; }
+        .q { width: 100%; white-space: pre-line; line-height: 2; }
+        .q .n { font-weight: bold; margin-right: 6px; color: #34495e; }
+        .q input, .q select { width: auto; min-width: 7em; max-width: 100%; padding: 6px 8px; margin: 0 3px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 16px; text-align: center; box-sizing: border-box; }
+
+        #exam-section, #result-section { display: none; }
+        .header-info { display: flex; justify-content: space-between; background: #eef2f3; padding: 15px; border-radius: 6px; margin-bottom: 25px; position: sticky; top: 0; z-index: 5; }
+        #timer { font-size: 1.5em; font-weight: bold; color: #e74c3c; }
+
+        .correct { border: 2px solid #2ecc71 !important; background-color: #eafaf1; }
+        .incorrect { border: 2px solid #e74c3c !important; background-color: #fceceb; }
+        .feedback { font-size: 14px; margin-top: 8px; width: 100%; padding: 8px; border-radius: 4px; display: none; box-sizing: border-box; }
+        .feedback.benar { background-color: #d5f5e3; color: #1e8449; }
+        .feedback.salah { background-color: #fadbd8; color: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-section">
+        <h1>テスト 復習 (1〜25課)<br><small>Test Review Bab 1–25</small></h1>
+        <p style="text-align:center">Total nilai 100 · Waktu 30 menit</p>
+        <div class="form-group"><label>Nama:</label><input type="text" id="student-name" required></div>
+        <div class="form-group"><label>Kelas:</label><input type="text" id="student-class" required></div>
+        <button onclick="startExam()">Mulai Ujian (30 Menit)</button>
+    </div>
+
+    <div id="exam-section">
+        <div class="header-info">
+            <div><strong>Nama:</strong> <span id="display-name"></span> <br><strong>Kelas:</strong> <span id="display-class"></span></div>
+            <div id="timer">30:00</div>
+        </div>
+
+        <form id="exam-form" onsubmit="return false">
+            <div id="parts"></div>
+            <button type="button" id="btn-submit" onclick="submitExam()">Kumpulkan Ujian</button>
+        </form>
+    </div>
+
+    <div id="result-section">
+        <h1>Ujian Selesai ✔</h1>
+        <p style="text-align: center;">Jawaban kamu sudah terkirim. Gulir ke atas untuk melihat detail koreksi.</p>
+    </div>
+</div>
+
+<script>
+    // URL Web App GAS (Hanya untuk mencatat ke Sheets, tanpa AI)
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby57oSE4EXDOHJ7bRkDO8k0ej2zc46hsSONVH8tIQcjdgH5pQ_WqyZLXbHnXuSnMcCe/exec';
+    const BAB = "Review 1-25";
+
+    let timeRemaining = 30 * 60;
+    let timerInterval;
+    let submitted = false;
+
+    const S=[
+{t:"Ⅰ. Tulis cara bacanya dengan hiragana",m:5,ex:"例: 1,752 → せんななひゃくごじゅうに",i:[
+["93,648 ＿",["きゅうまんさんぜんろっぴゃくよんじゅうはち"]],
+["10月10日 ＿",["じゅうがつとおか"]],
+["4月20日 ＿",["しがつはつか"]],
+["9:50 ＿",["くじごじゅっぷん|くじごじっぷん"]],
+["4:45 ＿",["よじよんじゅうごふん"]]]},
+{t:"Ⅱ. Isi dengan kata tanya yang tepat",m:10,ex:"例: 駅まで［どのくらい］かかりますか。",i:[
+["趣味は＿ですか。\n…釣りです。",["なん|何"]],
+["佐藤さんは＿人ですか。\n…あの赤いセーターを着ている人です。",["どの"]],
+["＿ぐらい漢字を覚えましたか。\n…50ぐらい覚えました。",["いくつ|なん|何"]],
+["コーヒーと紅茶と＿が好きですか。\n…コーヒーのほうが好きです。",["どちら"]],
+["課長は＿と言いましたか。\n…あさって名古屋へ出張すると言いました。",["なん|何"]],
+["タワポンさんの傘は＿ですか。\n…あの青い傘です。",["どれ"]],
+["＿きのう休みましたか。\n…熱がありましたから。",["どうして|なぜ"]],
+["このコピー、＿紙のサイズを変えますか。\n…ここを押してください。",["どうやって"]],
+["＿転勤しますか。\n…3月の終わりに転勤します。",["いつ"]],
+["最近の子どもについて＿思いますか。\n…そうですね。あまり外で遊ばないと思います。",["どう"]]]},
+{t:"Ⅲ. Isi partikel yang tepat (ketik × jika tidak perlu partikel)",m:28,ex:"例: 去年（×）日本（へ）来ました。",i:[
+["会議＿まえに、資料を準備しなければなりません。",["の"]],
+["1週間＿2回プール＿泳ぎ＿行きます。",["に","へ","に"]],
+["先月1週間＿学校＿休みました。",["x","を"]],
+["バスで東京駅まで行って、東京駅＿地下鉄＿乗り換えます。",["で","に"]],
+["だれ＿市役所の電話番号を調べてくれましたか。",["が"]],
+["おなかが痛かったですから、何＿食べませんでした。",["も"]],
+["3年＿まえに、この会社＿入りました。",["x","に"]],
+["ワットさんは大学＿近く＿住んでいます。",["の","に"]],
+["何メートルぐらい＿泳ぐこと＿できますか。",["x","が"]],
+["わたしは佐藤さん＿すき焼き＿作り方を教えてもらいました。",["に","の"]],
+["富士大学はあの角＿左へ曲がると、右＿あります。",["を","に"]],
+["夫はわたし＿料理＿上手です。",["より","が"]],
+["ここ＿お金を入れて、金額ボタンを押すと、切符＿出ます。",["に","が"]],
+["北海道＿沖縄まで自転車＿旅行したこと＿あります。",["から","で","が"]]]},
+{t:"Ⅳ. Ubah kata dalam kurung ke bentuk yang tepat",m:22,ex:"例: ここでたばこを（吸います→吸わ）ないでください。",i:[
+["時間が（ありません→＿）ら、タクシーで（行きます→＿）ましょう。",["なかった","行き"]],
+["ミラーさんはマリアさんに（会います→＿）ことが（ありません→＿）と言いました。",["会った","ない"]],
+["友達が駅まで迎えに（来ます→＿）くれました。",["来て"]],
+["バスを（降ります→＿）から、20分ぐらい（歩きます→＿）なければなりません。",["降りて","歩か"]],
+["ミラーさんが（作りました→＿）ケーキは（おいしいです→＿）と思います。",["作った","おいしい"]],
+["（暇です→＿）とき、本を（読みます→＿）り、絵を（かきます→＿）りします。",["暇な","読んだ","かいた|書いた|描いた"]],
+["すみません、ちょっとそのホッチキスを（借ります→＿）もいいですか。\n…ええ、どうぞ（使います→＿）ください。",["借りて","使って"]],
+["（疲れました→＿）とき、子どもの顔を（見ます→＿）と、（元気です→＿）なります。",["疲れた","見る","元気に"]],
+["車が（故障します→＿）も、簡単な（故障です→＿）ら、自分で（直します→＿）ことができます。",["故障して","故障だった","直す"]],
+["両親は年を取って、足が弱く（なります→＿）まえに、いろいろな国を（旅行します→＿）たいと言います。",["なる","旅行し"]]]},
+{t:"Ⅴ. Pilih jawaban/ungkapan yang tepat",m:10,ex:"例: ありがとうございます。→ どういたしまして",i:[
+["ジュース、もう一杯いかがですか。\n…＿",["けっこうです"],[["いいえ、まだまだです","けっこうです","どういたしまして"]]],
+["お茶をどうぞ。\n…＿",["いただきます"],[["いただきます","ありがとうございました","どういたしまして"]]],
+["ただいま。\n…＿",["お帰りなさい"],[["行ってらっしゃい","行ってきます","お帰りなさい"]]],
+["どうぞお上がりください。\n…＿",["失礼します"],[["いらっしゃい","失礼します","お帰りなさい"]]],
+["熱がありますから、これから病院へ行って、帰ります。\n…＿。＿。",["そうですか","お大事に"],[["そうですね","そうですよ","そうですか"],["おかげさまで","お大事に","お元気で"]]],
+["てんぷら定食を1つと刺身定食を2つお願いします。\n…＿",["かしこまりました"],[["かしこまりました","ごちそうさまでした","いただきます"]]],
+["木村です。どうぞよろしくお願いします。\n…＿",["こちらこそよろしくお願いします"],[["どうも","これでお願いします","こちらこそよろしくお願いします"]]],
+["来月国へ帰ります。＿。\n…＿",["いろいろお世話になりました","どうぞお元気で"],[["そろそろ失礼します","いろいろお世話になりました","これからお世話になります"],["どうぞお元気で","お大事に","久しぶりですね"]]]]},
+{t:"Ⅵ. Pilih kata yang tepat",m:10,ex:"例: 耳、鼻、歯 が痛いですから、食事ができません。→ 歯",i:[
+["＿はお元気ですか。",["奥さん"],[["妻","家内","奥さん"]]],
+["本は棚のいちばん＿に置いてください。",["下"],[["下","外","中"]]],
+["ここは＿が安いと思います。",["物価"],[["金額","現金","物価"]]],
+["暑いですから、＿物を飲みたいです。",["冷たい"],[["寒い","涼しい","冷たい"]]],
+["会議で＿＿を言いました。",["何か","意見"],[["何を","何も","何か"],["意味","意見","用事"]]],
+["靴を＿。",["はきます"],[["着ます","はきます","かぶります"]]],
+["＿があったら、留学したいです。",["チャンス"],[["チャンス","サービス","サイズ"]]],
+["先生は学生の＿を考えていると思います。",["こと"],[["物","人","こと"]]],
+["＿で新幹線の時間を調べてください。",["時刻表"],[["地図","時刻表","保険証"]]]]},
+{t:"Ⅶ. Pilih kata keterangan / kata sambung yang tepat",m:15,ex:"例: 日本の夏は あまり、とても、たくさん 暑いです。→ とても",i:[
+["先週＿スキーをしました。",["初めて"],[["一度も","初めて","一度"]]],
+["日本語は＿漢字が難しいと思います。",["特に"],[["全部で","特に","ほかに"]]],
+["このケーキは＿甘くないです。",["そんなに"],[["とても","そんなに","なかなか"]]],
+["バスが＿来ませんでした。＿タクシーで来ました。",["なかなか","ですから"],[["ほかに","もうすぐ","なかなか"],["そして","ですから","でも"]]],
+["旅行はとても楽しかったです。＿ちょっと疲れました。",["でも"],[["そして","ですから","でも"]]],
+["コーヒーを2つと紅茶を1つお願いします。＿ケーキを2つお願いします。",["それから"],[["それから","これから","ですから"]]],
+["本を借りるとき、このカードを持って来てください。\n…＿何か要りますか。",["ほかに"],[["ほかに","いろいろ","なかなか"]]],
+["＿昼ごはんを食べましたか。\n…いいえ、＿です。＿食べに行きます。",["もう","まだ","これから"],[["また","まだ","もう"],["また","まだ","もう"],["それから","これから","ですから"]]],
+["＿テレビを見ますか。\n…いいえ、＿見ません。",["よく","あまり"],[["よく","あまり","なかなか"],["よく","あまり","なかなか"]]],
+["＿ここにお金を入れて、＿金額を押してください。",["まず","次に"],[["まだ","もう","まず"],["ほかに","次に","別々に"]]]]}
+];
+
+    const ROM = ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ","Ⅵ","Ⅶ"];
+    const $ = id => document.getElementById(id);
+    // Pencocokan fleksibel: abaikan spasi, lebar huruf, besar/kecil; × = x
+    const norm = s => (s || "").normalize("NFKC").replace(/\s/g, "").replace(/[×✕✖]/g, "x").toLowerCase();
+
+    function renderAll() {
+        let h = "";
+        S.forEach((s, si) => {
+            h += `<h3>${s.t} (${s.m} poin)<small>${s.ex}</small></h3>`;
+            s.i.forEach((it, ii) => {
+                let bi = 0;
+                const parts = it[0].split("＿");
+                const html = parts.map((p, k) => {
+                    if (k === parts.length - 1) return p;
+                    const o = it[2] && it[2][bi];
+                    const id = `a_${si}_${ii}_${bi++}`;
+                    return p + (o
+                        ? `<select id="${id}"><option value="">--</option>${o.map(x => `<option>${x}</option>`).join("")}</select>`
+                        : `<input type="text" id="${id}" autocomplete="off" autocapitalize="off">`);
+                }).join("");
+                h += `<div class="question-box"><div class="q"><span class="n">${ii + 1})</span>${html}</div><div id="feed_${si}_${ii}" class="feedback"></div></div>`;
+            });
+        });
+        $("parts").innerHTML = h;
+    }
+    renderAll();
+
+    function startExam() {
+        const name = $('student-name').value.trim();
+        const studentClass = $('student-class').value.trim();
+        if (!name || !studentClass) return alert("Isi Nama dan Kelas terlebih dahulu!");
+        $('display-name').innerText = name;
+        $('display-class').innerText = studentClass;
+        $('login-section').style.display = 'none';
+        $('exam-section').style.display = 'block';
+        window.onbeforeunload = () => "Ujian sedang berlangsung";
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        if (timeRemaining <= 0) { clearInterval(timerInterval); submitExam(true); return; }
+        timeRemaining--;
+        const m = Math.floor(timeRemaining / 60), s = timeRemaining % 60;
+        $('timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function submitExam(isAuto = false) {
+        if (submitted) return;
+        if (!isAuto && !confirm("Kumpulkan ujian sekarang? Jawaban tidak dapat diubah lagi.")) return;
+        submitted = true;
+        clearInterval(timerInterval);
+        window.onbeforeunload = null;
+        $('btn-submit').style.display = 'none';
+
+        // KOREKSI LOKAL 100% INSTAN
+        let total = 0, lines = [];
+        S.forEach((s, si) => {
+            let ok = 0, n = 0, ans = [];
+            s.i.forEach((it, ii) => {
+                let good = true, row = [];
+                it[1].forEach((k, bi) => {
+                    const el = $(`a_${si}_${ii}_${bi}`);
+                    el.disabled = true;
+                    const v = el.value.trim();
+                    n++;
+                    const right = norm(v) && k.split("|").some(x => norm(x) === norm(v));
+                    if (right) ok++; else good = false;
+                    el.classList.add(right ? 'correct' : 'incorrect');
+                    row.push(v || "-");
+                });
+                ans.push(`${ii + 1}.${row.join("/")}`);
+                const f = $(`feed_${si}_${ii}`);
+                f.className = 'feedback ' + (good ? 'benar' : 'salah');
+                f.style.display = 'block';
+                f.innerHTML = good ? '<strong>Koreksi:</strong> Tepat sekali!'
+                    : '<strong>Jawaban tepat:</strong> ' + it[1].map(k => { const a = k.split("|")[0]; return a === "x" ? "×" : a; }).join(" / ");
+            });
+            const sub = s.m * ok / n;
+            total += sub;
+            lines.push(`[${ROM[si]} ${sub.toFixed(1)}/${s.m}] ${ans.join(" ")}`);
+        });
+
+        const finalScore = Math.round(total);
+        $('result-section').style.display = 'block';
+        $('result-section').scrollIntoView({ behavior: 'smooth' });
+
+        // Kirim Rekap ke Google Sheets (kolom Comment = jawaban siswa)
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                nama: $('display-name').innerText,
+                kelas: $('display-class').innerText,
+                bab: BAB,
+                finalScore: finalScore,
+                aiText: (isAuto ? "(Waktu habis) " : "") + lines.join("\n")
+            })
+        }).catch(e => console.log("Background log error:", e));
+    }
+</script>
+</body>
+</html>
