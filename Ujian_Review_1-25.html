@@ -28,7 +28,6 @@
         .feedback { font-size: 14px; margin-top: 8px; width: 100%; padding: 8px; border-radius: 4px; display: none; box-sizing: border-box; }
         .feedback.benar { background-color: #d5f5e3; color: #1e8449; }
         .feedback.salah { background-color: #fadbd8; color: #c0392b; }
-        .score-display { font-size: 48px; text-align: center; color: #27ae60; margin: 20px 0; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -55,9 +54,8 @@
     </div>
 
     <div id="result-section">
-        <h1>Rapor Ujian</h1>
-        <div class="score-display" id="final-score">0 / 100</div>
-        <p style="text-align: center;">Gulir ke atas untuk melihat detail koreksi.</p>
+        <h1>Ujian Selesai ✔</h1>
+        <p style="text-align: center;">Jawaban kamu sudah terkirim. Gulir ke atas untuk melihat detail koreksi.</p>
     </div>
 </div>
 
@@ -230,7 +228,6 @@
 
         const finalScore = Math.round(total);
         $('result-section').style.display = 'block';
-        $('final-score').innerText = `${finalScore} / 100`;
         $('result-section').scrollIntoView({ behavior: 'smooth' });
 
         // Kirim Rekap ke Google Sheets (kolom Comment = jawaban siswa)
